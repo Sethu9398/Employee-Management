@@ -3,8 +3,10 @@ import os
 import logging
 from sqlite3 import IntegrityError
 
-from App.schemas.userSchema import UserRegister, UserResponse
-from App.utils.security import hash_password
+from fastapi.security import HTTPAuthorizationCredentials
+
+from App.schemas.userSchema import TokenResponse, UserLogin, UserRegister, UserResponse
+from App.utils.security import create_access_token, hash_password, verify_password
 import bcrypt
 from pathlib import Path
 from dotenv import load_dotenv
@@ -139,4 +141,121 @@ def create_default_admin():
 
     finally:
         db.close()
+
+
+@router.post(
+    "/register",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED
+)
+def register_user(
+    user_data: UserRegister,
+    db: Session = Depends(get_db)
+):
+
+    email = user_data.email.strip().lower()
+
+    # Check duplicate email
+    existing_user = db.query(User).filter(
+        User.email == email
+    ).first()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
+
+    # Hash password
+    hashed_password = hash_password(user_data.password)
+
+    # Create employee account
+    new_user = User(
+        email=email,
+        password=hashed_password,
+        role=UserRole.EMPLOYEE,
+        department_id=None,
+        is_active=True,
+        is_delete=False
+    )
+
+    try:
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+
+        return new_user
+
+    except IntegrityError:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=409,
+            detail="Email already registered"
+        )
+
+    except Exception:
+        db.rollback()
+        logger.exception("User registration failed")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to register user"
+        )
+
+
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    status_code=status.HTTP_200_OK
+)
+def login_user(
+    login_data: UserLogin,
+    db: Session = Depends(get_db)
+):
+
+    email = login_data.email.strip().lower()
+
+    # Find user by email
+    user = db.query(User).filter(
+        User.email == email,
+        User.is_delete == False
+    ).first()
+
+    # Check user exists
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+
+    # Verify password
+    if not verify_password(
+        login_data.password,
+        user.password
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+
+    # Check account status
+    if not user.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="Your account is inactive"
+        )
+
+    # Generate JWT token
+    access_token = create_access_token(
+        user_id=user.user_id,
+        role=user.role.value
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": user.user_id,
+        "role": user.role.value
+    }
 
