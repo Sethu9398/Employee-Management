@@ -9,13 +9,15 @@ from sqlalchemy import (
     ForeignKey
 )
 from sqlalchemy.sql import func
-from database import Base
+from sqlalchemy.orm import relationship
+from App.database import Base
 import enum
 
 
 # User roles
 class UserRole(enum.Enum):
     ADMIN = "ADMIN"
+    HR = "HR"
     EMPLOYEE = "EMPLOYEE"
 
 
@@ -38,6 +40,12 @@ class User(Base):
         Integer,
         ForeignKey("departments.department_id"),
         nullable=True
+    )
+
+     # Department relationship
+    department = relationship(
+        "Department",
+        back_populates="users"
     )
 
 
