@@ -12,9 +12,8 @@ class UserRegister(BaseModel):
 
 # User login
 class UserLogin(BaseModel):
-    email: str
-    password: str
-
+    email: str = Field(min_length=5, max_length=150)
+    password: str = Field(min_length=1, max_length=72)
 
 # User response (never return password)
 class UserResponse(BaseModel):
