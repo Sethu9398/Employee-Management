@@ -1,15 +1,15 @@
 import os
 import logging
 from sqlite3 import IntegrityError
-
+import jwt
 from fastapi.security import HTTPAuthorizationCredentials
 
 from App.schemas.userSchema import TokenResponse, UserLogin, UserRegister, UserResponse
-from App.utils.security import create_access_token, hash_password, verify_password
+from App.utils.security import ALGORITHM, SECRET_KEY, create_access_token, hash_password, verify_password,create_refresh_token
 import bcrypt
 from pathlib import Path
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from App.database import SessionLocal, get_db
@@ -26,6 +26,28 @@ ENV_PATH = BASE_DIR / ".env"
 load_dotenv(dotenv_path=ENV_PATH)
 
 router = APIRouter(prefix="/user", tags=["Users"])
+
+
+
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,  # True in production with HTTPS
+        samesite="lax",
+        max_age=60 * 60
+    )
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,  # True in production with HTTPS
+        samesite="lax",
+        max_age=60 * 60 * 24 * 7
+    )
 
 
 @router.post("/create-default-admin")
@@ -122,7 +144,7 @@ def create_default_admin():
 @router.post(
     "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
 )
-def register_user(user_data: UserRegister, db: Session = Depends(get_db)):
+def register_user(user_data: UserRegister, response: Response,db: Session = Depends(get_db)):
 
     email = user_data.email.strip().lower()
 
@@ -154,6 +176,24 @@ def register_user(user_data: UserRegister, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(new_user)
 
+          # Generate tokens
+        access_token = create_access_token(
+            user_id=new_user.user_id,
+            role=new_user.role.value
+        )
+
+        refresh_token = create_refresh_token(
+            user_id=new_user.user_id,
+            role=new_user.role.value
+        )
+
+        # Store tokens in cookies
+        set_auth_cookies(
+            response,
+            access_token,
+            refresh_token
+        )
+
         return new_user
 
     except IntegrityError:
@@ -174,7 +214,11 @@ def register_user(user_data: UserRegister, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse, status_code=status.HTTP_200_OK)
-def login_user(login_data: UserLogin, db: Session = Depends(get_db)):
+def login_user(
+    login_data: UserLogin,
+    response: Response,
+    db: Session = Depends(get_db)
+):
 
     email = login_data.email.strip().lower()
 
@@ -193,12 +237,205 @@ def login_user(login_data: UserLogin, db: Session = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Your account is inactive")
 
-    # Generate JWT token
-    access_token = create_access_token(user_id=user.user_id, role=user.role.value)
+     # Generate Access Token
+    access_token = create_access_token(
+        user_id=user.user_id,
+        role=user.role.value
+    )
+
+    # Generate Refresh Token
+    refresh_token = create_refresh_token(
+        user_id=user.user_id,
+        role=user.role.value
+    )
+
+    # Store both tokens in cookies
+    set_auth_cookies(
+        response,
+        access_token,
+        refresh_token
+    )
 
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "user_id": user.user_id,
         "role": user.role.value,
+    }
+
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+def logout_user(response: Response):
+
+    # Delete Access Token Cookie
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        path="/"
+    )
+
+    # Delete Refresh Token Cookie
+    response.delete_cookie(
+        key="refresh_token",
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        path="/"
+    )
+
+    return {
+        "status": "success",
+        "message": "Logout successful"
+    }
+
+
+@router.post("/refresh")
+def refresh_access_token(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db)
+):
+
+    refresh_token = request.cookies.get("refresh_token")
+
+    if not refresh_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Refresh token missing"
+        )
+
+    try:
+        payload = jwt.decode(
+            refresh_token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        if payload.get("type") != "refresh":
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid refresh token"
+            )
+
+        user_id = int(payload.get("sub"))
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail="Refresh token expired. Please login again."
+        )
+
+    except (jwt.InvalidTokenError, TypeError, ValueError):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid refresh token"
+        )
+
+    user = db.query(User).filter(
+        User.user_id == user_id,
+        User.is_delete == False
+    ).first()
+
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=401,
+            detail="User not found or inactive"
+        )
+
+    # Generate new access token
+    new_access_token = create_access_token(
+        user_id=user.user_id,
+        role=user.role.value
+    )
+
+    # Store new access token in cookie
+    response.set_cookie(
+        key="access_token",
+        value=new_access_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=60 * 60
+    )
+
+    return {
+        "message": "Access token refreshed successfully"
+    }
+
+
+@router.post("/refresh")
+def refresh_access_token(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db)
+):
+
+    refresh_token = request.cookies.get("refresh_token")
+
+    print("✅Referesh token is : ",refresh_token)
+
+    if not refresh_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Refresh token missing"
+        )
+
+    try:
+        payload = jwt.decode(
+            refresh_token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        if payload.get("type") != "refresh":
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid refresh token"
+            )
+
+        user_id = int(payload.get("sub"))
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail="Refresh token expired. Please login again."
+        )
+
+    except (jwt.InvalidTokenError, TypeError, ValueError):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid refresh token"
+        )
+
+    user = db.query(User).filter(
+        User.user_id == user_id,
+        User.is_delete == False
+    ).first()
+
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=401,
+            detail="User not found or inactive"
+        )
+
+    # Generate new access token
+    new_access_token = create_access_token(
+        user_id=user.user_id,
+        role=user.role.value
+    )
+
+    # Store new access token in cookie
+    response.set_cookie(
+        key="access_token",
+        value=new_access_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=60 * 60
+    )
+
+    return {
+        "message": "Access token refreshed successfully"
     }
