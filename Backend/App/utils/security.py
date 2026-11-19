@@ -1,5 +1,7 @@
 
 import os
+
+from fastapi import HTTPException,status
 import bcrypt
 
 import jwt
@@ -62,6 +64,7 @@ def create_access_token(user_id: int, role: str):
     payload = {
         "sub": str(user_id),
         "role": role,
+        "type":"access",
         "exp": expire
     }
 
@@ -91,3 +94,44 @@ def create_refresh_token(user_id: int, role: str):
         SECRET_KEY,
         algorithm=ALGORITHM
     )
+
+
+# Verify Access Token
+def verify_access_token(token: str):
+
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        print(payload)
+
+        # Check token type
+        if payload.get("type") != "access":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid access token"
+            )
+
+        # Check user ID
+        if not payload.get("sub"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload"
+            )
+
+        return payload
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Access token expired"
+        )
+
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid access token"
+        )
