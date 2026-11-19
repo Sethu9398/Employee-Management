@@ -3,6 +3,7 @@ from App.database import engine,Base
 from App.routers.userRouter import router as user
 from App.models.userModel import User
 from App.models.departmentModel import Department
+from App.routers.departmentRouter import router as dept
 
 app = FastAPI(
     title="Employee Management Portal",
@@ -13,6 +14,7 @@ app = FastAPI(
 Base.metadata.create_all(bind=engine)
 
 app.include_router(user)
+app.include_router(dept)
 
 @app.get("/")
 def home():

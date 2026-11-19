@@ -26,10 +26,6 @@ class Department(Base):
         nullable=False
     )
 
-    description = Column(
-        String(255),
-        nullable=True
-    )
 
     is_active = Column(
         Boolean,
