@@ -19,6 +19,9 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(
     os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
 )
 
+REFRESH_TOKEN_EXPIRE_DAYS = int(
+    os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7")
+)
 
 # Hash password
 def hash_password(password: str) -> str:
@@ -59,6 +62,27 @@ def create_access_token(user_id: int, role: str):
     payload = {
         "sub": str(user_id),
         "role": role,
+        "exp": expire
+    }
+
+    return jwt.encode(
+        payload,
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
+
+
+# Generate Refresh Token
+def create_refresh_token(user_id: int, role: str):
+
+    expire = datetime.now(timezone.utc) + timedelta(
+        days=REFRESH_TOKEN_EXPIRE_DAYS
+    )
+
+    payload = {
+        "sub": str(user_id),
+        "role": role,
+        "type": "refresh",
         "exp": expire
     }
 
