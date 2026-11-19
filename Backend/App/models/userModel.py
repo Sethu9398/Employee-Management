@@ -26,7 +26,12 @@ class User(Base):
 
     user_id = Column(Integer, primary_key=True, index=True)
 
+     # New columns
+    fullname = Column(String(150), nullable=True)
+
     email = Column(String(150), unique=True, nullable=False, index=True)
+
+    phonenumber = Column(String(15), nullable=True)
 
     password = Column(String(255), nullable=False)
 
