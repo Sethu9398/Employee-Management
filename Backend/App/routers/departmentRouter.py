@@ -10,9 +10,10 @@ from App.models.departmentModel import Department
 from App.models.userModel import User
 from App.schemas.departmentSchema import (
     DepartmentCreate,
+    DepartmentListResponse,
     DepartmentResponse
 )
-from App.utils.auth import get_current_admin
+from App.utils.auth import get_current_admin, get_current_user
 
 
 logger = logging.getLogger(__name__)
@@ -84,3 +85,15 @@ def create_department(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to create department"
         )
+
+@router.get("/list",response_model=DepartmentListResponse)
+def get_department_List(db:Session=Depends(get_db),current_user:User=Depends(get_current_user)):
+    departments = db.query(Department).filter(
+        Department.is_delete == False
+    ).all()
+
+    return {
+        "status": "success",
+        "total_departments": len(departments),
+        "departments": departments
+    }
