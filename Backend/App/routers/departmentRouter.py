@@ -1,4 +1,3 @@
-
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -11,28 +10,23 @@ from App.models.userModel import User
 from App.schemas.departmentSchema import (
     DepartmentCreate,
     DepartmentListResponse,
-    DepartmentResponse
+    DepartmentResponse,
+    DepartmentStatusResponse,
 )
 from App.utils.auth import get_current_admin, get_current_user
 
-
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    prefix="/department",
-    tags=["Department"]
-)
+router = APIRouter(prefix="/department", tags=["Department"])
 
 
 @router.post(
-    "/create",
-    response_model=DepartmentResponse,
-    status_code=status.HTTP_201_CREATED
+    "/create", response_model=DepartmentResponse, status_code=status.HTTP_201_CREATED
 )
 def create_department(
     department_data: DepartmentCreate,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_admin: User = Depends(get_current_admin),
 ):
 
     # Validate department name
@@ -41,25 +35,24 @@ def create_department(
     if not department_name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Department name cannot be empty"
+            detail="Department name cannot be empty",
         )
 
     # Check duplicate department
-    existing_department = db.query(Department).filter(
-        Department.department_name == department_name
-    ).first()
+    existing_department = (
+        db.query(Department)
+        .filter(Department.department_name == department_name)
+        .first()
+    )
 
     if existing_department:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Department already exists"
+            status_code=status.HTTP_409_CONFLICT, detail="Department already exists"
         )
 
     # Create department
     new_department = Department(
-        department_name=department_name,
-        is_active=True,
-        is_delete=False
+        department_name=department_name, is_active=True, is_delete=False
     )
 
     try:
@@ -73,8 +66,7 @@ def create_department(
         db.rollback()
 
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Department already exists"
+            status_code=status.HTTP_409_CONFLICT, detail="Department already exists"
         )
 
     except Exception:
@@ -83,17 +75,77 @@ def create_department(
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to create department"
+            detail="Unable to create department",
         )
 
-@router.get("/list",response_model=DepartmentListResponse)
-def get_department_List(db:Session=Depends(get_db),current_user:User=Depends(get_current_user)):
-    departments = db.query(Department).filter(
-        Department.is_delete == False
-    ).all()
+
+@router.get("/list", response_model=DepartmentListResponse)
+def get_department_List(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    departments = db.query(Department).filter(Department.is_delete == False).all()
 
     return {
         "status": "success",
         "total_departments": len(departments),
-        "departments": departments
+        "departments": departments,
     }
+
+
+@router.patch("/{department_id}/status", response_model=DepartmentStatusResponse)
+def change_dept_active_status(
+    department_id: int,
+    is_active: bool,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin),
+):
+    department = (
+        db.query(Department)
+        .filter(
+            Department.department_id == department_id, Department.is_delete == False
+        )
+        .first()
+    )
+
+    if not department:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Department not found"
+        )
+
+    if department.is_active == is_active:
+        return {
+            "status": "success",
+            "message": (
+                "Department is already active"
+                if is_active
+                else "Department is already inactive"
+            ),
+            "department_id": department.department_id,
+            "department_name": department.department_name,
+            "is_active": department.is_active,
+            "is_delete": department.is_delete,
+        }
+
+    try:
+        department.is_active = is_active
+        db.commit()
+        db.refresh(department)
+        return {
+            "status": "success",
+            "message": (
+                "Department activated successfully"
+                if is_active
+                else "Department deactivated successfully"
+            ),
+            "department_id": department.department_id,
+            "department_name": department.department_name,
+            "is_active": department.is_active,
+        }
+    except:
+        db.rollback()
+        logger.exception("Department status update failed")
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to update department status",
+        )

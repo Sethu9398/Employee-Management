@@ -20,3 +20,11 @@ class DepartmentListResponse(BaseModel):
     status: str
     total_departments: int
     departments: List[DepartmentResponse]
+
+
+class DepartmentStatusResponse(BaseModel):
+    status: str
+    message: str
+    department_id: int
+    department_name: str
+    is_active: bool
