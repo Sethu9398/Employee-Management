@@ -1,6 +1,6 @@
 
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional
+from typing import List, Optional
 from App.models.userModel import UserRole
 
 
@@ -32,7 +32,9 @@ class UserResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
+class UserListResponse(BaseModel):
+    total_user:int
+    user:List[UserResponse]
 
 # JWT token response
 class TokenResponse(BaseModel):
