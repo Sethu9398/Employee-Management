@@ -1,10 +1,11 @@
 import os
 import logging
 from sqlite3 import IntegrityError
+from App.utils.auth import get_current_user
 import jwt
 from fastapi.security import HTTPAuthorizationCredentials
 
-from App.schemas.userSchema import TokenResponse, UserLogin, UserRegister, UserResponse
+from App.schemas.userSchema import TokenResponse, UserListResponse, UserLogin, UserRegister, UserResponse
 from App.utils.security import ALGORITHM, SECRET_KEY, create_access_token, hash_password, verify_password,create_refresh_token
 import bcrypt
 from pathlib import Path
@@ -438,4 +439,20 @@ def refresh_access_token(
 
     return {
         "message": "Access token refreshed successfully"
+    }
+
+
+@router.get('/list',response_model=UserListResponse,status_code=status.HTTP_200_OK)
+def get_all_user_list(db:Session=Depends(get_db),current_user:User=Depends(get_current_user)):
+
+    users = db.query(User).filter(
+        User.is_delete == False
+    ).order_by(
+        User.user_id.desc()
+    ).all()
+
+    # Return user list
+    return {
+        "total_user": len(users),
+        "user": users
     }
