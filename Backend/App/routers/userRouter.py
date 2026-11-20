@@ -456,3 +456,20 @@ def get_all_user_list(db:Session=Depends(get_db),current_user:User=Depends(get_c
         "total_user": len(users),
         "user": users
     }
+
+@router.get('/singleuser/{user_id}',response_model=UserResponse,status_code=status.HTTP_200_OK)
+def get_single_user(user_id: int,db:Session=Depends(get_db),current_user:User=Depends(get_current_user)):
+
+    user = db.query(User).filter(
+        User.user_id == user_id,
+        User.is_delete == False
+    ).first()
+
+    # Check user exists
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    return user
