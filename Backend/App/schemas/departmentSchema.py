@@ -1,3 +1,5 @@
+from typing import List
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -12,3 +14,9 @@ class DepartmentResponse(BaseModel):
     is_delete: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DepartmentListResponse(BaseModel):
+    status: str
+    total_departments: int
+    departments: List[DepartmentResponse]
