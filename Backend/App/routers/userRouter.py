@@ -489,7 +489,6 @@ def change_user_active_status(
     current_admin: User = Depends(get_current_admin),
 ):
 
-    # Find user
     user = db.query(User).filter(
         User.user_id == user_id,
         User.is_delete == False
@@ -501,12 +500,10 @@ def change_user_active_status(
             detail="User not found"
         )
 
-    # Check existing status
     if user.is_active == is_active:
         return user
 
     try:
-        # Update active status
         user.is_active = is_active
 
         db.commit()
