@@ -1,7 +1,9 @@
 import os
 import logging
 from sqlite3 import IntegrityError
-from App.utils.auth import get_current_admin, get_current_user
+
+from sqlalchemy import or_
+from App.utils.auth import get_current_user
 import jwt
 from fastapi.security import HTTPAuthorizationCredentials
 
@@ -476,47 +478,52 @@ def get_single_user(user_id: int,db:Session=Depends(get_db),current_user:User=De
 
 
 
-
-@router.patch(
-    "/active/{user_id}",
-    response_model=UserResponse,
+    
+@router.get(
+    "/search/{search}",
+    response_model=UserListResponse,
     status_code=status.HTTP_200_OK
 )
-def change_user_active_status(
-    user_id: int,
-    is_active: bool,
+def search_users(
+    search: str,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_current_admin),
+    current_user: User = Depends(get_current_user)
 ):
+    search = search.strip()
 
-    user = db.query(User).filter(
-        User.user_id == user_id,
+    if not search:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please enter user ID or name"
+        )
+
+    query = db.query(User).filter(
         User.is_delete == False
-    ).first()
+    )
 
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+    # Employee can search only employees
+    if current_user.role == UserRole.EMPLOYEE:
+        query = query.filter(
+            User.role == UserRole.EMPLOYEE
         )
 
-    if user.is_active == is_active:
-        return user
+    search_filters = [
+        User.fullname.ilike(f"%{search}%")
+    ]
 
-    try:
-        user.is_active = is_active
-
-        db.commit()
-        db.refresh(user)
-
-        return user
-
-    except Exception:
-        db.rollback()
-
-        logger.exception("User active status update failed")
-
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to update user active status"
+    # Search by user ID
+    if search.isdigit():
+        search_filters.append(
+            User.user_id == int(search)
         )
+
+    users = query.filter(
+        or_(*search_filters)
+    ).order_by(
+        User.user_id.desc()
+    ).all()
+
+    return {
+        "total_user": len(users),
+        "user": users
+    }
