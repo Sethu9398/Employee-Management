@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -149,3 +150,46 @@ def change_dept_active_status(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to update department status",
         )
+
+@router.get(
+    "/search/{search}",
+    response_model=DepartmentListResponse,
+    status_code=status.HTTP_200_OK
+)
+def search_department(
+    search: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    search = search.strip()
+
+    if not search:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please enter department ID or department name"
+        )
+
+    query = db.query(Department).filter(
+        Department.is_delete == False
+    )
+
+    search_filters = [
+        Department.department_name.ilike(f"%{search}%")
+    ]
+
+    if search.isdigit():
+        search_filters.append(
+            Department.department_id == int(search)
+        )
+
+    departments = query.filter(
+        or_(*search_filters)
+    ).order_by(
+        Department.department_id.desc()
+    ).all()
+
+    return {
+        "status": "success",
+        "total_departments": len(departments),
+        "departments": departments
+    }
