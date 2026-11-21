@@ -216,3 +216,47 @@ def get_single_dept(
         )
 
     return department
+
+
+
+@router.patch(
+    "/delete/{department_id}/{is_delete}",
+    response_model=DepartmentResponse,
+    status_code=status.HTTP_200_OK
+)
+def change_department_delete_status(
+    department_id: int,
+    is_delete: bool,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin)
+):
+    department = db.query(Department).filter(
+        Department.department_id == department_id
+    ).first()
+
+    if not department:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Department not found"
+        )
+
+    if department.is_delete == is_delete:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Department is already {'deleted' if is_delete else 'active'}"
+        )
+
+    try:
+        department.is_delete = is_delete
+
+        db.commit()
+        db.refresh(department)
+
+        return department
+
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update department delete status"
+        ) 
