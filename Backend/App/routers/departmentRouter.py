@@ -193,3 +193,26 @@ def search_department(
         "total_departments": len(departments),
         "departments": departments
     }
+
+@router.get(
+    "/single/{department_id}",
+    response_model=DepartmentResponse,
+    status_code=status.HTTP_200_OK
+)
+def get_single_dept(
+    department_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    department = db.query(Department).filter(
+        Department.department_id == department_id,
+        Department.is_delete == False
+    ).first()
+
+    if not department:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Department not found"
+        )
+
+    return department
