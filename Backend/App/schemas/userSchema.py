@@ -9,8 +9,10 @@ from App.models.userModel import UserRole
 class UserRegister(BaseModel):
     fullname: str = Field(min_length=2, max_length=150)
     email: str = Field(min_length=5, max_length=150)
+    department_id: int
     phonenumber: Optional[str] = Field(default=None, max_length=15)
     password: str = Field(min_length=8, max_length=72)
+    
 
 
 
