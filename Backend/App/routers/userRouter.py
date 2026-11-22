@@ -4,6 +4,7 @@ from sqlite3 import IntegrityError
 
 from sqlalchemy import or_
 from App.utils.auth import get_current_admin, get_current_user
+from App.models.departmentModel import Department
 import jwt
 from fastapi.security import HTTPAuthorizationCredentials
 
@@ -159,6 +160,19 @@ def register_user(user_data: UserRegister, response: Response,db: Session = Depe
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
+    department = db.query(Department).filter(
+        Department.department_id == user_data.department_id,
+        Department.is_active == True,
+        Department.is_delete == False
+    ).first()
+
+
+    if not department:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid department ID or department is inactive"
+        )
+
     # Hash password
     hashed_password = hash_password(user_data.password)
 
@@ -169,7 +183,7 @@ def register_user(user_data: UserRegister, response: Response,db: Session = Depe
         phonenumber=user_data.phonenumber,
         password=hashed_password,
         role=UserRole.EMPLOYEE,
-        department_id=None,
+        department_id=department.department_id,
         is_active=True,
         is_delete=False,
     )
