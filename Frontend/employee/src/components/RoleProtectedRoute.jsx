@@ -1,18 +1,22 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
+import AuthLoader from "./AuthLoader";
 
-const RoleProtectedRoute = ({ allowedRoles }) => {
+const RoleProtectedRoute = ({ allowedRoles = [] }) => {
 
-    const { user, isAuthenticated } = useAuth();
+    const { isAuthenticated, loading, hasRole } = useAuth();
+    const location = useLocation();
 
-    // Authentication check
-    if (!isAuthenticated) {
-        return <Navigate to="/login" replace />;
+    if (loading) {
+        return <AuthLoader />;
     }
 
-    // Authorization check
-    if (!allowedRoles.includes(user?.role)) {
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace state={{ from: location }} />;
+    }
+
+    if (!hasRole(allowedRoles)) {
         return <Navigate to="/unauthorized" replace />;
     }
 

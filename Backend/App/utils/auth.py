@@ -25,7 +25,13 @@ def get_current_user(
     # Verify access token
     payload = verify_access_token(access_token)
 
-    user_id = int(payload["sub"])
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload"
+        )
 
     # Find user in database
     user = db.query(User).filter(
