@@ -4,6 +4,7 @@ from App.routers.userRouter import router as user
 from App.models.userModel import User
 from App.models.departmentModel import Department
 from App.routers.departmentRouter import router as dept
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="Employee Management Portal",
@@ -12,6 +13,14 @@ app = FastAPI(
 )
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(user)
 app.include_router(dept)
