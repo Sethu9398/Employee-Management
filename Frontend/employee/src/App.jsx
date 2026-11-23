@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import { AuthProvider } from "./context/AuthContext";
+import { ROLES } from "./constants/roles";
 
 import Login from "./Pages/Login";
 import Home from "./Pages/Home";
@@ -12,7 +13,6 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
 
 function App() {
-  const user = JSON.parse(sessionStorage.getItem("user") || "null");
   return (
     <AuthProvider>
       <BrowserRouter>
@@ -29,13 +29,13 @@ function App() {
 
           {/* Admin Protected Route */}
 
-          <Route element={<RoleProtectedRoute allowedRoles={[user?.role]} />}>
+          <Route element={<RoleProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
             <Route path="/admin" element={<Admin />} />
           </Route>
 
           {/* Employee Protected Route */}
 
-          <Route element={<RoleProtectedRoute allowedRoles={[user?.role]} />}>
+          <Route element={<RoleProtectedRoute allowedRoles={[ROLES.EMPLOYEE]} />}>
             <Route path="/employee" element={<Employee />} />
           </Route>
 

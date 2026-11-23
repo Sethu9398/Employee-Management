@@ -18,7 +18,7 @@ if not SECRET_KEY:
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 ACCESS_TOKEN_EXPIRE_MINUTES = int(
-    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1")
 )
 
 REFRESH_TOKEN_EXPIRE_DAYS = int(
@@ -106,8 +106,6 @@ def verify_access_token(token: str):
             algorithms=[ALGORITHM]
         )
 
-        print(payload)
-
         # Check token type
         if payload.get("type") != "access":
             raise HTTPException(
@@ -135,3 +133,62 @@ def verify_access_token(token: str):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid access token"
         )
+
+
+# Verify Refresh Token (raises 401 if missing type, expired or invalid)
+def verify_refresh_token(token: str) -> int:
+
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token expired. Please login again."
+        )
+
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token"
+        )
+
+    if payload.get("type") != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token"
+        )
+
+    try:
+        return int(payload["sub"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token"
+        )
+
+
+# Check whether an access token is still usable for the given user.
+# Returns False when the token is missing, expired, tampered or belongs to someone else.
+def is_access_token_active(token: str | None, user_id: int) -> bool:
+
+    if not token:
+        return False
+
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+    except jwt.InvalidTokenError:  # includes ExpiredSignatureError
+        return False
+
+    return (
+        payload.get("type") == "access"
+        and payload.get("sub") == str(user_id)
+    )

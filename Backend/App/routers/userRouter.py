@@ -1,6 +1,5 @@
 import os
 import logging
-from sqlite3 import IntegrityError
 
 from sqlalchemy import or_
 from App.utils.auth import get_current_admin, get_current_user
@@ -9,13 +8,23 @@ import jwt
 from fastapi.security import HTTPAuthorizationCredentials
 
 from App.schemas.userSchema import TokenResponse, UserListResponse, UserLogin, UserRegister, UserResponse
-from App.utils.security import ALGORITHM, SECRET_KEY, create_access_token, hash_password, verify_password,create_refresh_token
+from App.utils.security import (
+    ALGORITHM,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    SECRET_KEY,
+    create_access_token,
+    create_refresh_token,
+    hash_password,
+    is_access_token_active,
+    verify_password,
+    verify_refresh_token,
+)
 import bcrypt
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from App.database import SessionLocal, get_db
 from App.models.userModel import User, UserRole
 
@@ -33,7 +42,11 @@ router = APIRouter(prefix="/user", tags=["Users"])
 
 
 
-def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
+ACCESS_COOKIE_MAX_AGE = 60 * 60
+REFRESH_COOKIE_MAX_AGE = 60 * 60 * 24 * REFRESH_TOKEN_EXPIRE_DAYS
+
+
+def set_access_cookie(response: Response, access_token: str):
 
     response.set_cookie(
         key="access_token",
@@ -41,8 +54,13 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
         httponly=True,
         secure=False,  # True in production with HTTPS
         samesite="lax",
-        max_age=60 * 60
+        max_age=ACCESS_COOKIE_MAX_AGE
     )
+
+
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
+
+    set_access_cookie(response, access_token)
 
     response.set_cookie(
         key="refresh_token",
@@ -50,7 +68,7 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
         httponly=True,
         secure=False,  # True in production with HTTPS
         samesite="lax",
-        max_age=60 * 60 * 24 * 7
+        max_age=REFRESH_COOKIE_MAX_AGE
     )
 
 
@@ -376,6 +394,11 @@ def logout_user(response: Response):
 #         "message": "Access token refreshed successfully"
 #     }
 
+@router.get("/me", response_model=UserResponse)
+def get_logged_in_user(
+    current_user: User = Depends(get_current_user)
+):
+    return current_user
 
 @router.post("/refresh")
 def refresh_access_token(
@@ -386,40 +409,14 @@ def refresh_access_token(
 
     refresh_token = request.cookies.get("refresh_token")
 
-    print("✅Referesh token is : ",refresh_token)
-
     if not refresh_token:
         raise HTTPException(
             status_code=401,
             detail="Refresh token missing"
         )
 
-    try:
-        payload = jwt.decode(
-            refresh_token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM]
-        )
-
-        if payload.get("type") != "refresh":
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid refresh token"
-            )
-
-        user_id = int(payload.get("sub"))
-
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=401,
-            detail="Refresh token expired. Please login again."
-        )
-
-    except (jwt.InvalidTokenError, TypeError, ValueError):
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid refresh token"
-        )
+    # 1. Refresh token must be valid and NOT expired
+    user_id = verify_refresh_token(refresh_token)
 
     user = db.query(User).filter(
         User.user_id == user_id,
@@ -432,23 +429,24 @@ def refresh_access_token(
             detail="User not found or inactive"
         )
 
-    # Generate new access token
+    # 2. Only issue a new access token once the current one has expired
+    if is_access_token_active(request.cookies.get("access_token"), user.user_id):
+        return {
+            "refreshed": False,
+            "message": "Access token is still valid"
+        }
+
+    # 3. Issue a new access token only — the refresh token is never reset here,
+    #    so the user must log in again when it expires.
     new_access_token = create_access_token(
         user_id=user.user_id,
         role=user.role.value
     )
 
-    # Store new access token in cookie
-    response.set_cookie(
-        key="access_token",
-        value=new_access_token,
-        httponly=True,
-        secure=False,
-        samesite="lax",
-        max_age=60 * 60
-    )
+    set_access_cookie(response, new_access_token)
 
     return {
+        "refreshed": True,
         "message": "Access token refreshed successfully"
     }
 

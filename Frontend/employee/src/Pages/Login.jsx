@@ -1,15 +1,18 @@
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
-import api from "../services/api";
+import api, { AUTH_ENDPOINTS } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
 
     const navigate = useNavigate();
+    const location = useLocation();
 
-    const { login } = useAuth();
+    const { login, isAuthenticated, loading } = useAuth();
+
+    const redirectTo = location.state?.from?.pathname || "/home";
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -21,23 +24,16 @@ const Login = () => {
         try {
 
             const response = await api.post(
-                "/user/login",
+                AUTH_ENDPOINTS.LOGIN,
                 {
                     email,
                     password
                 }
             );
 
-            // Store user information
-            login({
-                user_id: response.data.user_id,
-                name:response.data.name,
-                email: response.data.email,
-                role: response.data.role
-            });
+            login(response.data);
 
-            // Navigate to Home
-            navigate("/home", { replace: true });
+            navigate(redirectTo, { replace: true });
 
         } catch (error) {
 
@@ -50,6 +46,10 @@ const Login = () => {
 
         }
     };
+
+    if (!loading && isAuthenticated) {
+        return <Navigate to={redirectTo} replace />;
+    }
 
     return (
         <div>
