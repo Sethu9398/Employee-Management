@@ -11,6 +11,8 @@ import Unauthorized from "./Pages/Unauthorized";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
+import Register from "./Pages/Register";
+import DashboardRedirect from "./components/DashboardRedirect";
 
 function App() {
   return (
@@ -20,6 +22,7 @@ function App() {
           {/* Public Route */}
 
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register/>} />
 
           {/* Normal Protected Route */}
 
@@ -45,7 +48,7 @@ function App() {
 
           {/* Default Route */}
 
-          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="/" element={<DashboardRedirect />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

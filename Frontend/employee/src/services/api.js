@@ -7,6 +7,7 @@ export const API_BASE_URL = "http://localhost:5000";
 
 export const AUTH_ENDPOINTS = Object.freeze({
     LOGIN: "/user/login",
+    REGISTER: "/user/register",
     LOGOUT: "/user/logout",
     REFRESH: "/user/refresh",
     ME: "/user/me",
@@ -88,8 +89,10 @@ api.interceptors.response.use(
             clearStoredUser();
 
             
-            if (window.location.pathname !== LOGIN_PATH) {
-                window.location.replace(LOGIN_PATH);
+           const PUBLIC_PATHS = ["/login", "/register"];
+
+           if (!PUBLIC_PATHS.includes(window.location.pathname)) {
+           window.location.replace(LOGIN_PATH);
             }
 
             return Promise.reject(refreshError);
