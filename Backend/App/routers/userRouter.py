@@ -230,7 +230,7 @@ def register_user(user_data: UserRegister, response: Response,db: Session = Depe
         )
 
 
-@router.post("/login", response_model=TokenResponse, status_code=status.HTTP_200_OK)
+@router.post("/login", response_model=UserResponse, status_code=status.HTTP_200_OK)
 def login_user(
     login_data: UserLogin,
     response: Response,
@@ -273,12 +273,7 @@ def login_user(
         refresh_token
     )
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user_id": user.user_id,
-        "role": user.role.value,
-    }
+    return user
 
 
 @router.post("/logout", status_code=status.HTTP_200_OK)
@@ -308,78 +303,78 @@ def logout_user(response: Response):
     }
 
 
-@router.post("/refresh")
-def refresh_access_token(
-    request: Request,
-    response: Response,
-    db: Session = Depends(get_db)
-):
+# @router.post("/refresh")
+# def refresh_access_token(
+#     request: Request,
+#     response: Response,
+#     db: Session = Depends(get_db)
+# ):
 
-    refresh_token = request.cookies.get("refresh_token")
+#     refresh_token = request.cookies.get("refresh_token")
 
-    if not refresh_token:
-        raise HTTPException(
-            status_code=401,
-            detail="Refresh token missing"
-        )
+#     if not refresh_token:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Refresh token missing"
+#         )
 
-    try:
-        payload = jwt.decode(
-            refresh_token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM]
-        )
+#     try:
+#         payload = jwt.decode(
+#             refresh_token,
+#             SECRET_KEY,
+#             algorithms=[ALGORITHM]
+#         )
 
-        if payload.get("type") != "refresh":
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid refresh token"
-            )
+#         if payload.get("type") != "refresh":
+#             raise HTTPException(
+#                 status_code=401,
+#                 detail="Invalid refresh token"
+#             )
 
-        user_id = int(payload.get("sub"))
+#         user_id = int(payload.get("sub"))
 
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=401,
-            detail="Refresh token expired. Please login again."
-        )
+#     except jwt.ExpiredSignatureError:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Refresh token expired. Please login again."
+#         )
 
-    except (jwt.InvalidTokenError, TypeError, ValueError):
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid refresh token"
-        )
+#     except (jwt.InvalidTokenError, TypeError, ValueError):
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Invalid refresh token"
+#         )
 
-    user = db.query(User).filter(
-        User.user_id == user_id,
-        User.is_delete == False
-    ).first()
+#     user = db.query(User).filter(
+#         User.user_id == user_id,
+#         User.is_delete == False
+#     ).first()
 
-    if not user or not user.is_active:
-        raise HTTPException(
-            status_code=401,
-            detail="User not found or inactive"
-        )
+#     if not user or not user.is_active:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="User not found or inactive"
+#         )
 
-    # Generate new access token
-    new_access_token = create_access_token(
-        user_id=user.user_id,
-        role=user.role.value
-    )
+#     # Generate new access token
+#     new_access_token = create_access_token(
+#         user_id=user.user_id,
+#         role=user.role.value
+#     )
 
-    # Store new access token in cookie
-    response.set_cookie(
-        key="access_token",
-        value=new_access_token,
-        httponly=True,
-        secure=False,
-        samesite="lax",
-        max_age=60 * 60
-    )
+#     # Store new access token in cookie
+#     response.set_cookie(
+#         key="access_token",
+#         value=new_access_token,
+#         httponly=True,
+#         secure=False,
+#         samesite="lax",
+#         max_age=60 * 60
+#     )
 
-    return {
-        "message": "Access token refreshed successfully"
-    }
+#     return {
+#         "message": "Access token refreshed successfully"
+#     }
 
 
 @router.post("/refresh")
