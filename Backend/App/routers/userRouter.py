@@ -321,78 +321,6 @@ def logout_user(response: Response):
     }
 
 
-# @router.post("/refresh")
-# def refresh_access_token(
-#     request: Request,
-#     response: Response,
-#     db: Session = Depends(get_db)
-# ):
-
-#     refresh_token = request.cookies.get("refresh_token")
-
-#     if not refresh_token:
-#         raise HTTPException(
-#             status_code=401,
-#             detail="Refresh token missing"
-#         )
-
-#     try:
-#         payload = jwt.decode(
-#             refresh_token,
-#             SECRET_KEY,
-#             algorithms=[ALGORITHM]
-#         )
-
-#         if payload.get("type") != "refresh":
-#             raise HTTPException(
-#                 status_code=401,
-#                 detail="Invalid refresh token"
-#             )
-
-#         user_id = int(payload.get("sub"))
-
-#     except jwt.ExpiredSignatureError:
-#         raise HTTPException(
-#             status_code=401,
-#             detail="Refresh token expired. Please login again."
-#         )
-
-#     except (jwt.InvalidTokenError, TypeError, ValueError):
-#         raise HTTPException(
-#             status_code=401,
-#             detail="Invalid refresh token"
-#         )
-
-#     user = db.query(User).filter(
-#         User.user_id == user_id,
-#         User.is_delete == False
-#     ).first()
-
-#     if not user or not user.is_active:
-#         raise HTTPException(
-#             status_code=401,
-#             detail="User not found or inactive"
-#         )
-
-#     # Generate new access token
-#     new_access_token = create_access_token(
-#         user_id=user.user_id,
-#         role=user.role.value
-#     )
-
-#     # Store new access token in cookie
-#     response.set_cookie(
-#         key="access_token",
-#         value=new_access_token,
-#         httponly=True,
-#         secure=False,
-#         samesite="lax",
-#         max_age=60 * 60
-#     )
-
-#     return {
-#         "message": "Access token refreshed successfully"
-#     }
 
 @router.get("/me", response_model=UserResponse)
 def get_logged_in_user(
@@ -454,13 +382,11 @@ def refresh_access_token(
 @router.get('/list',response_model=UserListResponse,status_code=status.HTTP_200_OK)
 def get_all_user_list(db:Session=Depends(get_db),current_user:User=Depends(get_current_user)):
 
-    users = db.query(User).filter(
-        User.is_delete == False
-    ).order_by(
+    users = db.query(User).order_by(
         User.user_id.desc()
     ).all()
 
-    # Return user list
+    
     return {
         "total_user": len(users),
         "user": users
@@ -508,7 +434,6 @@ def search_users(
         User.is_delete == False
     )
 
-    # Employee can search only employees
     if current_user.role == UserRole.EMPLOYEE:
         query = query.filter(
             User.role == UserRole.EMPLOYEE

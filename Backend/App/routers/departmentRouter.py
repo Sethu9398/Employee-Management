@@ -84,7 +84,7 @@ def create_department(
 def get_department_List(
     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    departments = db.query(Department).filter(Department.is_delete == False).all()
+    departments = db.query(Department).all()
 
     return {
         "status": "success",
