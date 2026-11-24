@@ -22,6 +22,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
 import DashboardRedirect from "./components/DashboardRedirect";
 import EmployeeProfile from "./Pages/Employee/EmployeeProfile";
+import EmployeeUserList from "./Pages/Employee/EmployeeUserList";
 
 function App() {
 
@@ -94,6 +95,7 @@ function App() {
                                 />
 
                                 <Route path="/employee/profile" element={<EmployeeProfile/>}/>
+                                <Route path="/employee/userList" element={<EmployeeUserList/>}/>
 
                                 {/* Add more employee routes here */}
 

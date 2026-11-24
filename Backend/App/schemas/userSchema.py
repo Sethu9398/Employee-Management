@@ -1,4 +1,4 @@
-
+from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional
 from App.models.userModel import UserRole
@@ -31,6 +31,7 @@ class UserResponse(BaseModel):
     department_id: Optional[int] = None
     is_active: bool
     is_delete: bool
+    created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
