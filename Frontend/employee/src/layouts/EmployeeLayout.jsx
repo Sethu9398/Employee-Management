@@ -18,14 +18,9 @@ const EmployeeLayout = () => {
             icon: "bi-person"
         },
         {
-            name: "My Attendance",
-            path: "/employee/attendance",
-            icon: "bi-calendar-check"
-        },
-        {
-            name: "Leave Requests",
-            path: "/employee/leave",
-            icon: "bi-calendar-x"
+            name: "User List",
+            path: "/employee/userList",
+            icon: "bi bi-list"
         }
     ];
 
