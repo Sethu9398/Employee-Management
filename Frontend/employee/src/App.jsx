@@ -1,58 +1,124 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
+import {
+    BrowserRouter,
+    Routes,
+    Route
+} from "react-router-dom";
 
 import { AuthProvider } from "./context/AuthContext";
 import { ROLES } from "./constants/roles";
 
 import Login from "./Pages/Login";
-import Home from "./Pages/Home";
-import Admin from "./Pages/Admin";
-import Employee from "./Pages/Employee";
+import Register from "./Pages/Register";
 import Unauthorized from "./Pages/Unauthorized";
+
+import AdminDashboard from "./Pages/Admin/AdminDashboard";
+import EmployeeDashboard from "./Pages/Employee/EmployeeDashboard";
+
+import AdminLayout from "./layouts/AdminLayout";
+import EmployeeLayout from "./layouts/EmployeeLayout";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
-import Register from "./Pages/Register";
 import DashboardRedirect from "./components/DashboardRedirect";
 
 function App() {
-  return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Route */}
 
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register/>} />
+    return (
+        <AuthProvider>
+            <BrowserRouter>
 
-          {/* Normal Protected Route */}
+                <Routes>
 
-          <Route element={<ProtectedRoute />}>
-            <Route path="/home" element={<Home />} />
-          </Route>
+                    {/* Public Routes */}
 
-          {/* Admin Protected Route */}
+                    <Route
+                        path="/login"
+                        element={<Login />}
+                    />
 
-          <Route element={<RoleProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
-            <Route path="/admin" element={<Admin />} />
-          </Route>
+                    <Route
+                        path="/register"
+                        element={<Register />}
+                    />
 
-          {/* Employee Protected Route */}
+                    {/* Protected Routes */}
 
-          <Route element={<RoleProtectedRoute allowedRoles={[ROLES.EMPLOYEE]} />}>
-            <Route path="/employee" element={<Employee />} />
-          </Route>
+                    <Route element={<ProtectedRoute />}>
 
-          {/* Unauthorized Route */}
+                        {/* Admin Routes */}
 
-          <Route path="/unauthorized" element={<Unauthorized />} />
+                        <Route
+                            element={
+                                <RoleProtectedRoute
+                                    allowedRoles={[ROLES.ADMIN]}
+                                />
+                            }
+                        >
 
-          {/* Default Route */}
+                            <Route
+                                path="/admin"
+                                element={<AdminLayout />}
+                            >
 
-          <Route path="/" element={<DashboardRedirect />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
-  );
+                                <Route
+                                    index
+                                    element={<AdminDashboard />}
+                                />
+
+                                {/* Add more admin routes here */}
+
+                            </Route>
+
+                        </Route>
+
+                        {/* Employee Routes */}
+
+                        <Route
+                            element={
+                                <RoleProtectedRoute
+                                    allowedRoles={[ROLES.EMPLOYEE]}
+                                />
+                            }
+                        >
+
+                            <Route
+                                path="/employee"
+                                element={<EmployeeLayout />}
+                            >
+
+                                <Route
+                                    index
+                                    element={<EmployeeDashboard />}
+                                />
+
+                                {/* Add more employee routes here */}
+
+                            </Route>
+
+                        </Route>
+
+                    </Route>
+
+                    {/* Unauthorized */}
+
+                    <Route
+                        path="/unauthorized"
+                        element={<Unauthorized />}
+                    />
+
+                    {/* Default Route */}
+
+                    <Route
+                        path="*"
+                        element={<DashboardRedirect />}
+                    />
+
+                </Routes>
+
+            </BrowserRouter>
+        </AuthProvider>
+    );
 }
 
 export default App;
