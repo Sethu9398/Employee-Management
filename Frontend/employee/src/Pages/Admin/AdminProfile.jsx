@@ -238,8 +238,8 @@ const AdminProfile = () => {
                                         admin.is_active
                                             ? "bg-success"
                                             : "bg-danger"
-                                    }`}
-                                >
+                                    }`}>
+                                        
                                     {admin.is_active
                                         ? "Account Active"
                                         : "Account Inactive"}
