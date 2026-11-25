@@ -11,6 +11,13 @@ const AdminManageDepartment = () => {
     const [loading, setLoading] = useState(true);
     const [updatingDepartmentId, setUpdatingDepartmentId] = useState(null);
 
+    // Create department states
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [departmentName, setDepartmentName] = useState("");
+    const [creating, setCreating] = useState(false);
+    const [createError, setCreateError] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
+
     // Fetch departments
     const fetchDepartments = async () => {
         try {
@@ -53,6 +60,49 @@ const AdminManageDepartment = () => {
             return matchesSearch && matchesActive && matchesDelete;
         });
     }, [departments, search, activeFilter, deleteFilter]);
+
+    // Create department
+    const handleCreateDepartment = async (e) => {
+        e.preventDefault();
+
+        const trimmedName = departmentName.trim();
+
+        if (!trimmedName) {
+            setCreateError("Department name is required.");
+            return;
+        }
+
+        try {
+            setCreating(true);
+            setCreateError("");
+
+            const response = await api.post("/department/create", {
+                department_name: trimmedName,
+            });
+
+            // Add newly created department to the list
+            setDepartments((prevDepartments) => [
+                response.data,
+                ...prevDepartments,
+            ]);
+
+             await fetchDepartments();
+
+            setDepartmentName("");
+            setShowCreateModal(false);
+            setSuccessMessage("Department created successfully!");
+
+        } catch (err) {
+            console.error(err);
+
+            setCreateError(
+                err.response?.data?.detail ||
+                "Failed to create department."
+            );
+        } finally {
+            setCreating(false);
+        }
+    };
 
     // Toggle active status
     const handleActiveToggle = async (department) => {
@@ -100,6 +150,9 @@ const AdminManageDepartment = () => {
 
         const action = newDeleteStatus ? "delete" : "restore";
 
+        if (!window.confirm(`Are you sure you want to ${action} this department?`)) {
+            return;
+        }
 
         try {
             setUpdatingDepartmentId(department.department_id);
@@ -137,22 +190,66 @@ const AdminManageDepartment = () => {
         setDeleteFilter("all");
     };
 
+    // Close modal
+    const handleCloseModal = () => {
+        if (creating) return;
+
+        setShowCreateModal(false);
+        setDepartmentName("");
+        setCreateError("");
+    };
+
     return (
         <div className="container-fluid py-4">
 
             {/* Header */}
-            <div className="d-flex justify-content-between align-items-center mb-4">
+            <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+
                 <div>
                     <h2 className="fw-bold mb-1">Manage Departments</h2>
+
                     <p className="text-muted mb-0">
                         Search and manage department status
                     </p>
                 </div>
 
-                <span className="badge bg-primary fs-6">
-                    {filteredDepartments.length} Departments
-                </span>
+                <div className="d-flex align-items-center gap-2">
+
+                    <span className="badge bg-primary fs-6">
+                        {filteredDepartments.length} Departments
+                    </span>
+
+                    {/* Create Button */}
+                    <button
+                        className="btn btn-primary"
+                        onClick={() => {
+                            setCreateError("");
+                            setShowCreateModal(true);
+                        }}
+                    >
+                        <i className="bi bi-plus-lg me-2"></i>
+                        Create Department
+                    </button>
+
+                </div>
             </div>
+
+            {/* Success Message */}
+            {successMessage && (
+                <div
+                    className="alert alert-success alert-dismissible fade show"
+                    role="alert"
+                >
+                    <i className="bi bi-check-circle me-2"></i>
+                    {successMessage}
+
+                    <button
+                        type="button"
+                        className="btn-close"
+                        onClick={() => setSuccessMessage("")}
+                    ></button>
+                </div>
+            )}
 
             {/* Search and Filters */}
             <div className="card shadow-sm border-0 mb-4">
@@ -306,78 +403,79 @@ const AdminManageDepartment = () => {
                                         </div>
                                     </div>
 
-                                    {/* Status */}
+                                    {/* Active Status */}
                                     <div className="col-lg-3 col-md-6">
-                                        <div>
-                                            <label className="form-label small fw-semibold mb-1">
-                                                Active Status
+                                        <label className="form-label small fw-semibold mb-1">
+                                            Active Status
+                                        </label>
+
+                                        <div className="form-check form-switch">
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                role="switch"
+                                                checked={Boolean(
+                                                    department.is_active
+                                                )}
+                                                disabled={
+                                                    updatingDepartmentId ===
+                                                    department.department_id
+                                                }
+                                                onChange={() =>
+                                                    handleActiveToggle(department)
+                                                }
+                                            />
+
+                                            <label className="form-check-label small">
+                                                {department.is_active
+                                                    ? "Active"
+                                                    : "Inactive"}
                                             </label>
-
-                                            <div className="form-check form-switch">
-                                                <input
-                                                    className="form-check-input"
-                                                    type="checkbox"
-                                                    role="switch"
-                                                    checked={Boolean(
-                                                        department.is_active
-                                                    )}
-                                                    disabled={
-                                                        updatingDepartmentId ===
-                                                        department.department_id
-                                                    }
-                                                    onChange={() =>
-                                                        handleActiveToggle(
-                                                            department
-                                                        )
-                                                    }
-                                                />
-
-                                                <label className="form-check-label small">
-                                                    {department.is_active
-                                                        ? "Active"
-                                                        : "Inactive"}
-                                                </label>
-                                            </div>
                                         </div>
                                     </div>
 
                                     {/* Delete Status */}
                                     <div className="col-lg-3 col-md-6">
-                                        <div>
-                                            <label className="form-label small fw-semibold mb-1">
-                                                Delete Status
+                                        <label className="form-label small fw-semibold mb-1">
+                                            Delete Status
+                                        </label>
+
+                                        <div className="form-check form-switch">
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                role="switch"
+                                                checked={Boolean(
+                                                    department.is_delete
+                                                )}
+                                                disabled={
+                                                    updatingDepartmentId ===
+                                                    department.department_id
+                                                }
+                                                onChange={() =>
+                                                    handleDeleteToggle(department)
+                                                }
+                                            />
+
+                                            <label className="form-check-label small">
+                                                {department.is_delete
+                                                    ? "Deleted"
+                                                    : "Not Deleted"}
                                             </label>
-
-                                            <div className="form-check form-switch">
-                                                <input
-                                                    className="form-check-input"
-                                                    type="checkbox"
-                                                    role="switch"
-                                                    checked={Boolean(
-                                                        department.is_delete
-                                                    )}
-                                                    disabled={
-                                                        updatingDepartmentId ===
-                                                        department.department_id
-                                                    }
-                                                    onChange={() =>
-                                                        handleDeleteToggle(
-                                                            department
-                                                        )
-                                                    }
-                                                />
-
-                                                <label className="form-check-label small">
-                                                    {department.is_delete
-                                                        ? "Deleted"
-                                                        : "Not Deleted"}
-                                                </label>
-                                            </div>
                                         </div>
                                     </div>
 
                                 </div>
 
+                                {/* Deleted Badge */}
+                                {department.is_delete && (
+                                    <div className="mt-3">
+                                        <span className="badge bg-danger">
+                                            <i className="bi bi-trash me-1"></i>
+                                            Deleted Department
+                                        </span>
+                                    </div>
+                                )}
 
                                 {/* Updating */}
                                 {updatingDepartmentId ===
@@ -394,6 +492,112 @@ const AdminManageDepartment = () => {
                         </div>
                     ))}
 
+                </div>
+            )}
+
+            {/* Create Department Modal */}
+            {showCreateModal && (
+                <div
+                    className="modal fade show"
+                    style={{
+                        display: "block",
+                        backgroundColor: "rgba(0, 0, 0, 0.5)",
+                    }}
+                    tabIndex="-1"
+                    role="dialog"
+                    aria-modal="true"
+                >
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow">
+
+                            {/* Modal Header */}
+                            <div className="modal-header">
+                                <h5 className="modal-title fw-bold">
+                                    <i className="bi bi-building-add text-primary me-2"></i>
+                                    Create Department
+                                </h5>
+
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    disabled={creating}
+                                    onClick={handleCloseModal}
+                                ></button>
+                            </div>
+
+                            {/* Modal Body */}
+                            <form onSubmit={handleCreateDepartment}>
+
+                                <div className="modal-body">
+
+                                    <p className="text-muted">
+                                        Enter a name to create a new department.
+                                    </p>
+
+                                    {/* Error */}
+                                    {createError && (
+                                        <div className="alert alert-danger py-2">
+                                            <i className="bi bi-exclamation-circle me-2"></i>
+                                            {createError}
+                                        </div>
+                                    )}
+
+                                    <label className="form-label fw-semibold">
+                                        Department Name
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Enter department name"
+                                        value={departmentName}
+                                        onChange={(e) => {
+                                            setDepartmentName(e.target.value);
+                                            setCreateError("");
+                                        }}
+                                        maxLength={100}
+                                        autoFocus
+                                        disabled={creating}
+                                    />
+
+                                </div>
+
+                                {/* Modal Footer */}
+                                <div className="modal-footer">
+
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-secondary"
+                                        disabled={creating}
+                                        onClick={handleCloseModal}
+                                    >
+                                        Cancel
+                                    </button>
+
+                                    <button
+                                        type="submit"
+                                        className="btn btn-primary"
+                                        disabled={creating}
+                                    >
+                                        {creating ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2"></span>
+                                                Creating...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="bi bi-plus-lg me-2"></i>
+                                                Create Department
+                                            </>
+                                        )}
+                                    </button>
+
+                                </div>
+
+                            </form>
+
+                        </div>
+                    </div>
                 </div>
             )}
 
