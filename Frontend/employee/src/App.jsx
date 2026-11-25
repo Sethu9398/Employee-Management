@@ -23,6 +23,7 @@ import RoleProtectedRoute from "./components/RoleProtectedRoute";
 import DashboardRedirect from "./components/DashboardRedirect";
 import EmployeeProfile from "./Pages/Employee/EmployeeProfile";
 import EmployeeUserList from "./Pages/Employee/EmployeeUserList";
+import AdminManageUser from "./Pages/Admin/AdminManageUser";
 
 function App() {
 
@@ -67,6 +68,9 @@ function App() {
                                     index
                                     element={<AdminDashboard />}
                                 />
+                                <Route
+                                path="/admin/employees"
+                                element={<AdminManageUser/>}/>
 
                                 {/* Add more admin routes here */}
 
