@@ -24,6 +24,7 @@ import DashboardRedirect from "./components/DashboardRedirect";
 import EmployeeProfile from "./Pages/Employee/EmployeeProfile";
 import EmployeeUserList from "./Pages/Employee/EmployeeUserList";
 import AdminManageUser from "./Pages/Admin/AdminManageUser";
+import AdminManageDepartment from "./Pages/Admin/AdminManageDepartment";
 
 function App() {
 
@@ -53,24 +54,19 @@ function App() {
 
                         <Route
                             element={
-                                <RoleProtectedRoute
-                                    allowedRoles={[ROLES.ADMIN]}
-                                />
-                            }
-                        >
+                                <RoleProtectedRoute allowedRoles={[ROLES.ADMIN]}/>}>
 
                             <Route
-                                path="/admin"
-                                element={<AdminLayout />}
-                            >
+                                path="/admin" element={<AdminLayout />}>
 
                                 <Route
                                     index
                                     element={<AdminDashboard />}
                                 />
                                 <Route
-                                path="/admin/employees"
-                                element={<AdminManageUser/>}/>
+                                    path="/admin/employees" element={<AdminManageUser />} />
+
+                                <Route path="/admin/departments" element={<AdminManageDepartment />} />
 
                                 {/* Add more admin routes here */}
 
@@ -93,13 +89,10 @@ function App() {
                                 element={<EmployeeLayout />}
                             >
 
-                                <Route
-                                    index
-                                    element={<EmployeeDashboard />}
-                                />
+                                <Route index element={<EmployeeDashboard />}/>
 
-                                <Route path="/employee/profile" element={<EmployeeProfile/>}/>
-                                <Route path="/employee/userList" element={<EmployeeUserList/>}/>
+                                <Route path="/employee/profile" element={<EmployeeProfile />} />
+                                <Route path="/employee/userList" element={<EmployeeUserList />} />
 
                                 {/* Add more employee routes here */}
 
