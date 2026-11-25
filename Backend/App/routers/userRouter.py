@@ -502,3 +502,46 @@ def change_user_delete_status(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update user delete status"
         )
+
+@router.patch(
+    "/active/{id}/{is_active}",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK
+)
+def change_user_active_status(
+    id: int,
+    is_active: bool,
+    db: Session = Depends(get_db),
+    current_user_admin: User = Depends(get_current_admin)
+):
+    user = db.query(User).filter(
+        User.user_id == id
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    if user.is_active == is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User is already {'active' if is_active else 'inactive'}"
+        )
+
+    try:
+        user.is_active = is_active
+
+        db.commit()
+        db.refresh(user)
+
+        return user
+
+    except Exception:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update user active status"
+        )
