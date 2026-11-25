@@ -25,6 +25,7 @@ import EmployeeProfile from "./Pages/Employee/EmployeeProfile";
 import EmployeeUserList from "./Pages/Employee/EmployeeUserList";
 import AdminManageUser from "./Pages/Admin/AdminManageUser";
 import AdminManageDepartment from "./Pages/Admin/AdminManageDepartment";
+import AdminProfile from "./Pages/Admin/AdminProfile";
 
 function App() {
 
@@ -52,21 +53,17 @@ function App() {
 
                         {/* Admin Routes */}
 
-                        <Route
-                            element={
-                                <RoleProtectedRoute allowedRoles={[ROLES.ADMIN]}/>}>
+                        <Route element={<RoleProtectedRoute allowedRoles={[ROLES.ADMIN]}/>}>
 
-                            <Route
-                                path="/admin" element={<AdminLayout />}>
+                            <Route path="/admin" element={<AdminLayout />}>
 
                                 <Route
-                                    index
-                                    element={<AdminDashboard />}
-                                />
-                                <Route
-                                    path="/admin/employees" element={<AdminManageUser />} />
+                                    index   element={<AdminDashboard />}/>
+                                <Route path="/admin/employees" element={<AdminManageUser />} />
 
                                 <Route path="/admin/departments" element={<AdminManageDepartment />} />
+
+                                <Route path="/admin/profile" element={<AdminProfile/>}/>
 
                                 {/* Add more admin routes here */}
 
@@ -78,11 +75,7 @@ function App() {
 
                         <Route
                             element={
-                                <RoleProtectedRoute
-                                    allowedRoles={[ROLES.EMPLOYEE]}
-                                />
-                            }
-                        >
+                                <RoleProtectedRoute  allowedRoles={[ROLES.EMPLOYEE]}/>}>
 
                             <Route
                                 path="/employee"
